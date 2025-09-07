@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Smart Sales • Live Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap + Icons + Chart.js + plugins -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1/dist/chartjs-chart-matrix.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/countup.js@2.6.2/dist/countUp.umd.js"></script>
+
+  <style>
+    :root{
+      --bg-img: url('https://png.pngtree.com/thumb_back/fh260/background/20240715/pngtree-futuristic-data-analytics-dashboard-image_16012317.jpg');
+      --card-radius: 14px;
+      --brand: #5c6bc0;
+      --muted: #6c757d;
+    }
+
+    html,body { height:100%; margin:0; }
+    body {
+      background-image: var(--bg-img);
+      background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #0f172a;
+      padding: 18px;
+    }
+    body.dark {
+      background-color: #071029;
+      color: #e6eef8;
+    }
+
+    .cardx {
+      background: rgba(255,255,255,0.95);
+      border-radius: var(--card-radius);
+      padding: 18px;
+      box-shadow: 0 6px 18px rgba(20,20,30,0.06);
+      transition: all .18s ease;
+    }
+    body.dark .cardx { background: rgba(10,20,30,0.65); box-shadow: 0 8px 28px rgba(0,0,0,0.6); color: #e6eef8; }
+
+    .kpi { border-radius:12px; padding:14px; background: linear-gradient(135deg,#eaf6ff,#f6e8ff); text-align:center; }
+    body.dark .kpi { background: linear-gradient(135deg,#0f1724,#0b1220); color:#e6eef8; }
+    .kpi h2 { margin:0; font-size:1.9rem; font-weight:700; color:#4a148c; }
+    body.dark .kpi h2 { color:#c4b5fd; }
+
+    .filter-grid { display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; }
+    @media (max-width:992px) { .filter-grid{ grid-template-columns: 1fr 1fr; } }
+    @media (max-width:576px) { .filter-grid{ grid-template-columns: 1fr; } }
+
+    label.form-label { font-weight:600; color: #23303b; }
+    body.dark label.form-label { color:#dbeafe; }
+
+    .chart-title { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .chart-actions { display:flex; gap:8px; align-items:center; }
+
+    /* === FIX: uniform chart containers === */
+    .chart-container {
+      width: 100%;
+      max-width: 720px;    /* max width per chart */
+      height: 340px;       /* FIXED visual height for all charts */
+      margin: 10px auto;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+    /* force canvas to fill container exactly */
+    .chart-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .insight-col { flex: 1 1 0; }
+
+    .delta { font-size: .9rem; margin-top:6px; font-weight:600; }
+    .delta.positive { color:#16a34a; }
+    .delta.negative { color:#dc2626; }
+    .delta.neutral { color:var(--muted); }
+
+    .section-heading { font-weight:700; margin-top:18px; margin-bottom:8px; color: inherit; }
+
+    .btn-compact { padding:.28rem .5rem; font-size:.85rem; }
+
+    /* churn table styles */
+    .churn-table th, .churn-table td { vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center gap-3">
+      <a href="/index" class="btn btn-outline-secondary btn-sm">← Back</a>
+      <h3 class="m-0">Analytics Dashboard</h3>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button id="themeToggle" class="btn btn-outline-secondary btn-sm btn-compact" title="Toggle dark mode">
+        <i id="themeIcon" class="bi bi-moon-stars"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="cardx mb-3">
+    <div class="filter-grid">
+      <div>
+        <label class="form-label">Start Date</label>
+        <input id="startDate" type="date" class="form-control">
+      </div>
+      <div>
+        <label class="form-label">End Date</label>
+        <input id="endDate" type="date" class="form-control">
+      </div>
+      <div>
+        <label class="form-label">Product</label>
+        <select id="productFilter" class="form-select"><option value="">All</option></select>
+      </div>
+      <div>
+        <label class="form-label">Customer</label>
+        <select id="customerFilter" class="form-select"><option value="">All</option></select>
+      </div>
+      <!-- left empty on purpose or add additional filter -->
+      <div></div>
+    </div>
+
+    <div class="mt-3 d-flex gap-3 align-items-center">
+      <button id="applyBtn" class="btn btn-primary">Apply Filters</button>
+
+      <div class="form-check form-switch ms-3">
+        <input class="form-check-input" type="checkbox" id="compareSwitch">
+        <label class="form-check-label small-note" for="compareSwitch">Comparison Mode</label>
+      </div>
+
+      <div id="compareControls" class="d-flex gap-2 ms-3" style="display:none;">
+        <input id="compareStart" type="date" class="form-control form-control-sm" style="width:150px;">
+        <input id="compareEnd" type="date" class="form-control form-control-sm" style="width:150px;">
+      </div>
+
+      <div class="ms-auto d-flex gap-2">
+        <a id="excelBtn" class="btn btn-outline-success btn-sm btn-compact" href="#" role="button">Export Excel</a>
+        <a id="pdfBtn" class="btn btn-outline-danger btn-sm btn-compact" href="#" role="button">Export PDF</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-2">
+      <div class="cardx kpi text-center">
+        <p class="mb-1">Total Revenue</p>
+        <h2 id="kpiRevenue">₹0</h2>
+        <div id="revDelta" class="delta neutral">—</div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="cardx kpi text-center">
+        <p class="mb-1">Total Orders</p>
+        <h2 id="kpiOrders">0</h2>
+        <div id="ordDelta" class="delta neutral">—</div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="cardx kpi text-center">
+        <p class="mb-1">Total Quantity</p>
+        <h2 id="kpiQty">0</h2>
+        <div id="qtyDelta" class="delta neutral">—</div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="cardx kpi text-center">
+        <p class="mb-1">Avg Order Value</p>
+        <h2 id="kpiAOV">₹0</h2>
+        <div id="aovDelta" class="delta neutral">—</div>
+      </div>
+    </div>
+    <!-- NEW KPI: Predicted Sales next month -->
+    <div class="col-md-4">
+      <div class="cardx kpi text-center" style="background:linear-gradient(135deg,#ffd6a5,#ffadad); color:#111;">
+        <p class="mb-1">Predicted Sales • Next Month</p>
+        <h2 id="kpiPred">₹0</h2>
+        <div id="predDelta" class="delta neutral">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing charts (kept intact) -->
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6">
+      <div class="cardx">
+        <div class="chart-title mb-2">
+          <h6 class="m-0">Daily Revenue Trend</h6>
+          <div class="chart-actions">
+            <select id="dailyType" class="form-select form-select-sm" style="width:120px;">
+              <option value="line">Line</option>
+              <option value="bar">Bar</option>
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" id="dlLineBtn" title="Download chart"><i class="bi bi-download"></i></button>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="lineChart"></canvas></div>
+        <div class="small-note mt-2">Blue = actual revenue. Orange dotted = forecast (next 30 days).</div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="cardx">
+        <div class="chart-title mb-2">
+          <h6 class="m-0">Revenue by Product</h6>
+          <div class="chart-actions">
+            <button class="btn btn-outline-secondary btn-sm" id="dlBarBtn"><i class="bi bi-download"></i></button>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="cardx">
+        <div class="chart-title mb-2">
+          <h6 class="m-0">Revenue by Top 5 Customers</h6>
+          <div class="chart-actions">
+            <button class="btn btn-outline-secondary btn-sm" id="dlPieBtn"><i class="bi bi-download"></i></button>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Insights -->
+  <div class="section-heading">Additional Insights</div>
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6 insight-col">
+      <div class="cardx">
+        <div class="chart-title mb-2">
+          <h6 class="m-0">Stacked Revenue • Top Products Over Time</h6>
+          <div><button class="btn btn-outline-secondary btn-sm" id="dlStacked"><i class="bi bi-download"></i></button></div>
+        </div>
+        <div class="chart-container"><canvas id="stackedChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 insight-col">
+      <div class="cardx">
+        <div class="chart-title mb-2">
+          <h6 class="m-0">Order Distribution (Region / Payment)</h6>
+          <div><button class="btn btn-outline-secondary btn-sm" id="dlDonut"><i class="bi bi-download"></i></button></div>
+        </div>
+        <div class="chart-container"><canvas id="donutChart"></canvas></div>
+        <div id="donutNotice" class="small-note mt-2" style="display:none;">No <code>region</code> or <code>payment_method</code> fields found in API data.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW: Region-wise comparison chart (keeps original charts intact) -->
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="cardx">
+        <div class="chart-title mb-2">
+          <h6 class="m-0">Region-wise Revenue Comparison</h6>
+          <div><button class="btn btn-outline-secondary btn-sm" id="dlRegionCompare"><i class="bi bi-download"></i></button></div>
+        </div>
+        <div class="chart-container"><canvas id="regionCompareChart"></canvas></div>
+        <div class="small-note mt-2">Shows total sales (Amount) per Region (North, South, East, West).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW: Customer Churn Alert Table -->
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="cardx">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="m-0">Customers At Risk (No orders in last 30 days)</h6>
+          <div>
+            <button id="dlChurnCSV" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download"></i> Export CSV</button>
+          </div>
+        </div>
+        <div style="overflow:auto">
+          <table class="table table-sm churn-table" id="churnTable">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Last Order Date</th>
+                <th>Days Since Last Order</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- filled by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="small-note mt-2">This table flags customers whose last order was more than 30 days ago.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   Configuration & Globals
+   ========================= */
+const API_ENDPOINT = '/api/sales-data';
+let lineChart, barChart, pieChart, stackedChart, donutChart, regionCompareChart;
+
+/* ===== Utility helpers ===== */
+function buildURL(base, params) {
+  const q = new URLSearchParams(params);
+  return `${base}?${q.toString()}`;
+}
+function getFilters() {
+  return {
+    start_date: document.getElementById('startDate').value || '',
+    end_date: document.getElementById('endDate').value || '',
+    product: document.getElementById('productFilter').value || '',
+    customer: document.getElementById('customerFilter').value || ''
+  };
+}
+async function fetchRows(params = {}) {
+  const url = buildURL(API_ENDPOINT, params);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API fetch failed: ' + res.status);
+    return await res.json();
+  } catch (err) {
+    console.error('Fetch error', err);
+    alert('Failed to load sales data. Check console for details.');
+    return [];
+  }
+}
+function rupees(v){ return '₹' + (Number(v)||0).toFixed(2); }
+
+function normDateString(d) {
+  if (!d && d !== 0) return '';
+  const tryParse = (x) => {
+    if (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x)) return x.slice(0,10);
+    const dt = new Date(x);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0,10);
+    if (typeof x === 'string' && x.length >= 10) return x.slice(0,10);
+    return '';
+  };
+  return tryParse(d);
+}
+
+/* ===== Populate dropdowns from rows ===== */
+function populateDropdowns(rows) {
+  const products = [...new Set(rows.map(r => r.product).filter(Boolean))].sort();
+  const customers = [...new Set(rows.map(r => r.customer).filter(Boolean))].sort();
+  const prodSel = document.getElementById('productFilter');
+  const custSel = document.getElementById('customerFilter');
+  const oldProd = prodSel.value, oldCust = custSel.value;
+  prodSel.innerHTML = '<option value="">All</option>';
+  custSel.innerHTML = '<option value="">All</option>';
+  products.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; prodSel.appendChild(o); });
+  customers.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; custSel.appendChild(o); });
+  if (products.includes(oldProd)) prodSel.value = oldProd;
+  if (customers.includes(oldCust)) custSel.value = oldCust;
+}
+
+/* ===== KPI summarization & animated counters ===== */
+function summarize(rows) {
+  const totalRevenue = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const totalOrders = rows.length;
+  const totalQty = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const aov = totalOrders ? (totalRevenue / totalOrders) : 0;
+  return { totalRevenue, totalOrders, totalQty, aov };
+}
+function animateNumber(elId, value, options={}) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const opts = { duration: 0.9, separator: ',', decimalPlaces: options.decimals ?? (options.currency ? 2 : 0), prefix: options.currency ? '₹' : '' };
+  try {
+    const cu = new CountUp.CountUp(el, value, opts);
+    cu.start();
+  } catch(e) { el.textContent = opts.prefix + Number(value || 0).toFixed(opts.decimalPlaces); }
+}
+function showDelta(elId, current, prev, isCurrency=false) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!prev || prev === 0) { el.textContent = '—'; el.className = 'delta neutral'; return; }
+  const diff = current - prev;
+  const pct = ((diff / prev) * 100);
+  const sign = diff > 0 ? '+' : '';
+  el.className = 'delta ' + (diff > 0 ? 'positive' : (diff < 0 ? 'negative' : 'neutral'));
+  el.textContent = `${pct.toFixed(1)}% (${sign}${isCurrency ? rupees(diff) : diff.toFixed(0)})`;
+}
+
+/* ===== Chart helpers (ensures fixed sizing via container) ===== */
+function destroyCharts() {
+  [lineChart, barChart, pieChart, stackedChart, donutChart, regionCompareChart].forEach(c => { try { c && c.destroy(); } catch(e){} });
+}
+function chartColorOpts() {
+  const dark = document.body.classList.contains('dark');
+  return {
+    gridColor: dark ? '#1f2937' : '#e6eef8',
+    tickColor: dark ? '#cbd5e1' : '#334155'
+  };
+}
+
+/* ===== Build main charts with maintainAspectRatio:false (respects container sizes) ===== */
+function buildMainCharts(rows, dailyType='line') {
+  // Build daily totals
+  const byDate = {};
+  rows.forEach(r => {
+    const dstr = normDateString(r.date);
+    if (!dstr) return;
+    byDate[dstr] = (byDate[dstr] || 0) + (Number(r.amount) || 0);
+  });
+  const dates = Object.keys(byDate).sort();
+  const daily = dates.map(d => byDate[d]);
+
+  const byProd = {};
+  rows.forEach(r => {
+    const p = r.product || 'Unknown';
+    byProd[p] = (byProd[p] || 0) + (Number(r.amount) || 0);
+  });
+  const prodLabels = Object.keys(byProd);
+  const prodVals = Object.values(byProd);
+
+  const byCust = {};
+  rows.forEach(r => {
+    const c = r.customer || 'Unknown';
+    byCust[c] = (byCust[c] || 0) + (Number(r.amount) || 0);
+  });
+  const custSorted = Object.entries(byCust).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const custLabels = custSorted.map(x=>x[0]);
+  const custVals = custSorted.map(x=>x[1]);
+
+  // destroy charts before creating (keep others unaffected)
+  try { if (lineChart) lineChart.destroy(); } catch(e){}
+  try { if (barChart) barChart.destroy(); } catch(e){}
+  try { if (pieChart) pieChart.destroy(); } catch(e){}
+
+  const colorOpts = chartColorOpts();
+
+  // Prepare forecast for next 30 days (linear regression on daily sequence)
+  // Convert dates to ordinal sequence x = 0,1,2...
+  const x = daily.map((_,i)=>i);
+  const y = daily.map(v=>v);
+  function linearRegressionXY(xs, ys) {
+    if (xs.length < 2) return { slope:0, intercept: ys[0] || 0 };
+    const n = xs.length;
+    const sumX = xs.reduce((a,b)=>a+b,0);
+    const sumY = ys.reduce((a,b)=>a+b,0);
+    const sumXY = xs.reduce((a,b,i)=>a + b*ys[i],0);
+    const sumX2 = xs.reduce((a,b)=>a + b*b,0);
+    const denom = (n*sumX2 - sumX*sumX) || 1;
+    const slope = (n*sumXY - sumX*sumY) / denom;
+    const intercept = (sumY - slope*sumX) / n;
+    return { slope, intercept };
+  }
+  const lr = linearRegressionXY(x,y);
+
+  // Build labels with forecast appended (next 30 days)
+  const forecastDays = 30;
+  const futureLabels = [];
+  const futureData = [];
+  for (let i=1; i<=forecastDays; i++) {
+    const lastDate = dates.length ? new Date(dates[dates.length-1]) : new Date();
+    const nextDate = new Date(lastDate);
+    nextDate.setDate(lastDate.getDate() + i);
+    futureLabels.push(nextDate.toISOString().slice(0,10));
+    const xi = x.length + (i-1);
+    const pred = lr.intercept + lr.slope * xi;
+    futureData.push(Math.max(0, pred));
+  }
+
+  const fullLabels = [...dates, ...futureLabels];
+  const actualData = [...daily, ...Array(forecastDays).fill(null)];
+  const forecastData = [...Array(dates.length).fill(null), ...futureData];
+
+  // Line Chart (with forecast dotted line)
+  const ctxLine = document.getElementById('lineChart').getContext('2d');
+  lineChart = new Chart(ctxLine, {
+    type: dailyType,
+    data: {
+      labels: fullLabels,
+      datasets: [
+        { label:'Revenue', data: actualData, borderWidth:2, backgroundColor:'rgba(92,107,192,0.3)', tension:0.2, showLine:true },
+        { label:'Forecast', data: forecastData, borderWidth:2, borderDash:[6,4], borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.08)', tension:0.2, pointRadius:0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { ticks:{ color: colorOpts.tickColor }, grid:{ color: colorOpts.gridColor } }, y: { ticks:{ color: colorOpts.tickColor }, grid:{ color: colorOpts.gridColor } } },
+      plugins: { legend:{ display:true, position:'bottom' } }
+    }
+  });
+
+  // Bar chart (Revenue by Product)
+  const ctxBar = document.getElementById('barChart').getContext('2d');
+  barChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: { labels: prodLabels, datasets: [{ label:'Revenue', data: prodVals, backgroundColor: prodLabels.map((_,i)=>`hsl(${i*40 % 360} 60% 50%)`) }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color: colorOpts.tickColor }, grid:{ color: colorOpts.gridColor }}, y:{ ticks:{ color: colorOpts.tickColor }, grid:{ color: colorOpts.gridColor }}} }
+  });
+
+  // Pie chart (Top customers)
+  const ctxPie = document.getElementById('pieChart').getContext('2d');
+  pieChart = new Chart(ctxPie, {
+    type: 'pie',
+    data: { labels: custLabels, datasets: [{ data: custVals, backgroundColor: custLabels.map((_,i)=>`hsl(${i*50 % 360} 60% 60%)`) }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+}
+
+/* ===== Stacked bar (top products over months) ===== */
+function buildStackedChart(rows) {
+  const map = {};
+  const prodTotals = {};
+  rows.forEach(r => {
+    const ym = (normDateString(r.date) || '').slice(0,7);
+    if (!ym) return;
+    const p = r.product || 'Unknown';
+    map[ym] = map[ym] || {};
+    map[ym][p] = (map[ym][p] || 0) + (Number(r.amount) || 0);
+    prodTotals[p] = (prodTotals[p] || 0) + (Number(r.amount) || 0);
+  });
+  const months = Object.keys(map).sort();
+  const topProducts = Object.entries(prodTotals).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0]);
+
+  const datasets = topProducts.map((p, idx) => ({
+    label: p,
+    data: months.map(m => (map[m][p] || 0)),
+    backgroundColor: `hsl(${idx*50 % 360} 60% 55%)`,
+    stack: 'stack1'
+  }));
+
+  const ctx = document.getElementById('stackedChart').getContext('2d');
+  stackedChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: months, datasets },
+    options: { responsive:true, maintainAspectRatio:false, scales: { x: { stacked:true }, y:{ stacked:true } } }
+  });
+}
+
+/* ===== Donut (region/payment) ===== */
+function buildDonut(rows) {
+  const notice = document.getElementById('donutNotice');
+  const hasRegion = rows.some(r => r.region);
+  const hasPayment = rows.some(r => r.payment_method || r.payment_mode);
+
+  if (!hasRegion && !hasPayment) {
+    if (notice) notice.style.display = 'block';
+    if (donutChart) donutChart.destroy();
+    return;
+  }
+  if (notice) notice.style.display = 'none';
+
+  const counts = {};
+  // prefer payment_method if available else region counts by amount
+  if (hasPayment) {
+    rows.forEach(r => { const k = (r.payment_method || r.payment_mode || 'Unknown'); counts[k] = (counts[k]||0) + (Number(r.amount) || 0); });
+  } else {
+    rows.forEach(r => { const k = r.region || 'Unknown'; counts[k] = (counts[k]||0) + (Number(r.amount) || 0); });
+  }
+  const labels = Object.keys(counts);
+  const vals = Object.values(counts);
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: labels.map((_,i)=>`hsl(${i*60%360} 60% 60%)`) }] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'60%' }
+  });
+}
+
+/* ===== Region comparison chart (horizontal) ===== */
+function buildRegionCompareChart(rows) {
+  const totals = {};
+  rows.forEach(r => {
+    const region = (r.region || 'Unknown');
+    totals[region] = (totals[region] || 0) + (Number(r.amount) || 0);
+  });
+  const labels = Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+  const data = labels.map(l => totals[l]);
+  const ctx = document.getElementById('regionCompareChart').getContext('2d');
+  try { if (regionCompareChart) regionCompareChart.destroy(); } catch(e){}
+  regionCompareChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label:'Revenue', data, backgroundColor: labels.map((_,i)=>`hsl(${i*60%360} 70% 50%)`) }] },
+    options: { responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ₹${Number(ctx.raw).toLocaleString('en-IN')}` } } }, scales:{ x:{ ticks:{ color: document.body.classList.contains('dark') ? '#cbd5e1' : '#333' }}, y:{ ticks:{ color: document.body.classList.contains('dark') ? '#cbd5e1' : '#333' } } } }
+  });
+}
+
+/* ===== Sales prediction (monthly) =====
+   Build predicted sales for next month using linear regression on monthly totals.
+*/
+function predictNextMonthSales(rows) {
+  // Aggregate revenue by month 'YYYY-MM'
+  const monthly = {};
+  rows.forEach(r => {
+    const ds = normDateString(r.date);
+    if (!ds) return;
+    const ym = ds.slice(0,7);
+    monthly[ym] = (monthly[ym] || 0) + (Number(r.amount) || 0);
+  });
+  const months = Object.keys(monthly).sort(); // e.g. ['2024-01','2024-02',...]
+  if (months.length < 2) {
+    return { predicted: (monthly[months[months.length-1]] || 0), monthly, months };
+  }
+  // x as 0..n-1, y as totals
+  const xs = months.map((_,i)=>i);
+  const ys = months.map(m => monthly[m]);
+
+  // linear regression
+  const n = xs.length;
+  const sumX = xs.reduce((a,b)=>a+b,0);
+  const sumY = ys.reduce((a,b)=>a+b,0);
+  const sumXY = xs.reduce((a,b,i)=>a + b*ys[i],0);
+  const sumX2 = xs.reduce((a,b)=>a + b*b,0);
+  const denom = (n*sumX2 - sumX*sumX) || 1;
+  const slope = (n*sumXY - sumX*sumY) / denom;
+  const intercept = (sumY - slope*sumX) / n;
+
+  const nextX = xs.length;
+  const predicted = Math.max(0, intercept + slope * nextX);
+  return { predicted, monthly, months };
+}
+
+/* ===== Customer churn table ===== */
+const CHURN_DAYS = 30;
+function buildChurnTable(rows) {
+  // compute last order date per customer
+  const lastByCustomer = {};
+  rows.forEach(r => {
+    const cust = r.customer || 'Unknown';
+    const ds = normDateString(r.date);
+    if (!ds) return;
+    if (!lastByCustomer[cust] || lastByCustomer[cust] < ds) lastByCustomer[cust] = ds;
+  });
+
+  const today = new Date();
+  const tbody = document.querySelector('#churnTable tbody');
+  tbody.innerHTML = '';
+  const churnList = [];
+
+  Object.entries(lastByCustomer).forEach(([cust, lastDateStr]) => {
+    const lastDate = new Date(lastDateStr);
+    const daysAgo = Math.floor((today - lastDate) / (1000*60*60*24));
+    const atRisk = daysAgo > CHURN_DAYS;
+    if (atRisk) churnList.push({ cust, lastDateStr, daysAgo });
+  });
+
+  // sort by daysAgo desc
+  churnList.sort((a,b)=>b.daysAgo - a.daysAgo);
+
+  churnList.forEach(item => {
+    const tr = document.createElement('tr');
+    const tdCust = document.createElement('td'); tdCust.textContent = item.cust;
+    const tdDate = document.createElement('td'); tdDate.textContent = item.lastDateStr;
+    const tdDays = document.createElement('td'); tdDays.textContent = item.daysAgo;
+    const tdStatus = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = 'At Risk';
+    badge.style.background = '#f59e0b'; badge.style.color = '#fff';
+    tdStatus.appendChild(badge);
+    tr.appendChild(tdCust); tr.appendChild(tdDate); tr.appendChild(tdDays); tr.appendChild(tdStatus);
+    tbody.appendChild(tr);
+  });
+
+  // enable export CSV of churnList
+  document.getElementById('dlChurnCSV').onclick = () => {
+    if (!churnList.length) { alert('No churning customers to export'); return; }
+    const rowsCsv = [['Customer','Last Order Date','Days Since Last Order'], ...churnList.map(r=>[r.cust, r.lastDateStr, r.daysAgo])];
+    const csvText = rowsCsv.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvText], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'churn_customers.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+}
+
+/* ===== Download helpers ===== */
+function downloadCanvasPNG(canvasId, filenameBase) {
+  try {
+    const canvas = document.getElementById(canvasId);
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filenameBase + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(e){ console.error('Download failed', e); alert('Unable to download chart image'); }
+}
+
+/* ===== Refresh pipeline ===== */
+async function refreshAll() {
+  const filters = getFilters();
+  const rows = await fetchRows(filters);
+
+  console.log('Fetched rows sample:', rows && rows.slice ? rows.slice(0,8) : rows);
+
+  populateDropdowns(rows);
+
+  const cur = summarize(rows);
+  animateNumber('kpiRevenue', cur.totalRevenue, { currency:true });
+  animateNumber('kpiOrders', cur.totalOrders);
+  animateNumber('kpiQty', cur.totalQty);
+  animateNumber('kpiAOV', cur.aov, { currency:true });
+
+  // Sales prediction KPI
+  const pred = predictNextMonthSales(rows);
+  animateNumber('kpiPred', pred.predicted || 0, { currency:true });
+  // show delta vs last month (if exists)
+  if (pred.months && pred.months.length >= 1) {
+    const lastMonth = pred.months[pred.months.length-1];
+    const lastVal = pred.monthly[lastMonth] || 0;
+    showDelta('predDelta', pred.predicted || 0, lastVal, true);
+  } else {
+    const el = document.getElementById('predDelta'); if (el) { el.textContent='—'; el.className='delta neutral'; }
+  }
+
+  if (document.getElementById('compareSwitch').checked) {
+    const cs = document.getElementById('compareStart').value;
+    const ce = document.getElementById('compareEnd').value;
+    if (cs && ce) {
+      const prevRows = await fetchRows({ ...filters, start_date: cs, end_date: ce });
+      const prev = summarize(prevRows);
+      showDelta('revDelta', cur.totalRevenue, prev.totalRevenue, true);
+      showDelta('ordDelta', cur.totalOrders, prev.totalOrders, false);
+      showDelta('qtyDelta', cur.totalQty, prev.totalQty, false);
+      showDelta('aovDelta', cur.aov, prev.aov, true);
+    } else {
+      ['revDelta','ordDelta','qtyDelta','aovDelta'].forEach(id => { const el = document.getElementById(id); el.textContent='—'; el.className='delta neutral'; });
+    }
+  } else {
+    ['revDelta','ordDelta','qtyDelta','aovDelta'].forEach(id => { const el = document.getElementById(id); el.textContent='—'; el.className='delta neutral'; });
+  }
+
+  const dailyType = document.getElementById('dailyType').value || 'line';
+  buildMainCharts(rows, dailyType);
+  buildStackedChart(rows);
+  buildDonut(rows);
+  buildRegionCompareChart(rows);
+  buildChurnTable(rows);
+
+  const q = getFilters();
+  const excelBtn = document.getElementById('excelBtn');
+  const pdfBtn = document.getElementById('pdfBtn');
+  if (excelBtn) excelBtn.href = buildURL('/dashboard-export/excel', q);
+  if (pdfBtn) pdfBtn.href = buildURL('/dashboard-export/pdf', q);
+}
+
+/* ===== UI bindings ===== */
+document.getElementById('applyBtn').addEventListener('click', refreshAll);
+document.getElementById('dailyType').addEventListener('change', refreshAll);
+document.getElementById('compareSwitch').addEventListener('change', e => {
+  document.getElementById('compareControls').style.display = e.target.checked ? 'flex' : 'none';
+});
+document.getElementById('dlLineBtn').addEventListener('click', ()=> downloadCanvasPNG('lineChart', 'daily-revenue'));
+document.getElementById('dlBarBtn').addEventListener('click', ()=> downloadCanvasPNG('barChart', 'revenue-by-product'));
+document.getElementById('dlPieBtn').addEventListener('click', ()=> downloadCanvasPNG('pieChart', 'top-customers'));
+document.getElementById('dlStacked').addEventListener('click', ()=> downloadCanvasPNG('stackedChart', 'stacked-revenue'));
+document.getElementById('dlDonut').addEventListener('click', ()=> downloadCanvasPNG('donutChart', 'order-distribution'));
+document.getElementById('dlRegionCompare').addEventListener('click', ()=> downloadCanvasPNG('regionCompareChart', 'region-wise-revenue'));
+
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  document.body.classList.toggle('dark');
+  const icon = document.getElementById('themeIcon');
+  icon.className = document.body.classList.contains('dark') ? 'bi bi-sun' : 'bi bi-moon-stars';
+  setTimeout(()=>{ try { refreshAll(); } catch(e){} }, 120);
+});
+
+/* ===== Initial load ===== */
+refreshAll();
+
+</script>
+
+<!-- Optional Flask server route for saving charts (paste into your Flask app if desired):
+@app.route('/save-chart', methods=['POST'])
+def save_chart():
+    import base64, os, re, json
+    data = request.get_json()
+    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', data.get('filename','chart.png'))
+    b64 = data.get('image_base64','').split(',')[-1]
+    out = base64.b64decode(b64)
+    dest = os.path.join(app.root_path, 'static', 'charts')
+    os.makedirs(dest, exist_ok=True)
+    with open(os.path.join(dest, filename), 'wb') as f:
+        f.write(out)
+    return jsonify({'ok':True, 'path': f'static/charts/{filename}'})
+-->
+
+</body>
+</html>

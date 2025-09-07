@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Report History</title>
+</head>
+<body>
+    <h1>Past Reports</h1>
+    <ul>
+        {% for file in files %}
+        <li><a href="/reports/{{ file }}" download>{{ file }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

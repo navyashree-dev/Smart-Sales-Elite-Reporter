@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Sales Elite Reporter</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+    :root {
+      --primary: #0d47a1;
+      --secondary: #1565c0;
+      --accent: #6c63ff;
+      --success: #16a34a;
+      --danger: #b91c1c;
+      --warning: #f59e0b;
+
+      --text: #0f172a;
+      --surface: rgba(255, 255, 255, 0.15);
+      --bg-gradient: linear-gradient(135deg, #6c63ff, #4cafef);
+
+      --radius: 18px;
+      --shadow: 0 8px 24px rgba(2, 6, 23, .12);
+    }
+
+    body.dark {
+      --primary: #00c9ff;
+      --secondary: #92fe9d;
+      --accent: #ff6ec7;
+      --text: #eaeaea;
+      --surface: rgba(0, 0, 0, 0.55);
+      --bg-gradient: linear-gradient(135deg, #232526, #414345);
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--bg-gradient);
+      color: var(--text);
+      transition: background 0.6s ease, color 0.6s ease;
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: var(--surface);
+      padding: 10px 15px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .card {
+      width: min(92vw, 580px);
+      background: var(--surface);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      animation: fadeIn 1s ease forwards;
+      color: var(--text);
+    }
+
+    h1 {
+      margin: 0 0 20px;
+      font-weight: 700;
+      font-size: clamp(22px, 2.5vw, 32px);
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+
+    .form-link,
+    button {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 14px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      color: #fff;
+      text-decoration: none;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    button:hover,
+    .form-link:hover {
+      transform: scale(1.03);
+      filter: brightness(1.1);
+    }
+
+    .btn-form { background: linear-gradient(180deg, #6f42c1, #5a36a5); }
+    .btn-upload { background: linear-gradient(180deg, #ff9800, #ef6c00); }
+    .btn-generate { background: linear-gradient(180deg, #00c853, #00a24a); }
+    .btn-send { background: linear-gradient(180deg, #1e88e5, #1565c0); }
+    .btn-dashboard { background: linear-gradient(180deg, #ff7a45, #e85d24); }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 14px;
+      font-size: 14px;
+    }
+
+    input[type="date"],
+    input[type="email"],
+    input[type="file"],
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      margin-top: 6px;
+      font-size: 15px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 150px;
+      margin-top: 12px;
+      resize: vertical;
+      font-family: monospace;
+    }
+
+    .flash-message {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--text);
+    }
+
+    .flash-success { border-left: 6px solid #16a34a; }
+    .flash-error { border-left: 6px solid #b91c1c; }
+
+    /* Flex container for Google Form & Upload */
+    .flex-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .flex-row .form-link {
+      flex: 1;
+    }
+
+    .flex-row .upload-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .upload-section input[type="file"] {
+      margin-bottom: 8px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 560px) {
+      .card { padding: 18px; }
+      h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="theme-toggle" onclick="toggleTheme()">🌙 Dark</div>
+
+  <div class="card">
+    <h1>Smart Sales Elite Reporter</h1>
+
+    <!-- Google Form & Upload in one row -->
+    <div class="flex-row">
+      <a class="form-link btn-form"
+        href="https://docs.google.com/forms/d/e/1FAIpQLSeZWFUZJx9LPdALyyfnSy35X-WR6Eu4QXWl4kY4xWKdSh9PsA/viewform?usp=header"
+        target="_blank">
+        Fill Sales Form
+      </a>
+
+      <div class="upload-section">
+        <input type="file" id="uploadFile" accept=".csv,.xlsx" />
+        <button type="button" class="btn-upload" onclick="uploadFile()">Upload File</button>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-message flash-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/generate" onsubmit="return handleGenerate(event);">
+      <label for="start_date">Start Date:</label>
+      <input type="date" name="start_date" id="start_date"
+             value="{{ start_date if start_date else (request.form.start_date if request.form.start_date else '') }}" required>
+
+      <label for="end_date">End Date:</label>
+      <input type="date" name="end_date" id="end_date"
+             value="{{ end_date if end_date else (request.form.end_date if request.form.end_date else '') }}" required>
+
+      <button type="submit" class="btn-generate">Generate Report</button>
+    </form>
+  <form method="POST" action="/send-mail" onsubmit="return handleSendMail(event);">
+      <input type="hidden" name="start_date" id="send_mail_start_date">
+      <input type="hidden" name="end_date" id="send_mail_end_date">
+
+      <label for="recipient_email">Recipient Email:</label>
+      <input type="email" name="recipient_email" id="recipient_email" placeholder="Enter email address" required>
+
+      <button type="submit" class="btn-send">Send Mail</button>
+    </form>
+
+    <button type="button" class="btn-dashboard" onclick="window.location.href='{{ url_for('live_dashboard') }}'">Open Live Dashboard</button>
+
+    <textarea readonly id="report_box" placeholder="Report will appear here...">{{ report if report else "" }}</textarea>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+      const mode = document.body.classList.contains('dark') ? 'dark' : 'light';
+      localStorage.setItem('theme', mode);
+      document.querySelector('.theme-toggle').textContent = mode === 'dark' ? '☀ Light' : '🌙 Dark';
+    }
+
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.body.classList.add('dark');
+        document.querySelector('.theme-toggle').textContent = '☀ Light';
+      }
+    };
+  </script>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - SmartSales Elite Reporter</title>
+  <style>
+    /* Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+:root {
+  --primary-color: #4facfe;
+  --secondary-color: #00f2fe;
+  --card-bg: rgba(255, 255, 255, 0.12);
+  --text-color: #ffffff;
+  --bg-image: url('https://source.unsplash.com/1600x900/?city,blur'); /* Replace with your custom image */
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-color);
+  background: linear-gradient(120deg, #667eea, #764ba2);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Blurred background image like reference */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-image) no-repeat center center / cover;
+  filter: blur(18px);
+  z-index: -1;
+}
+
+/* Login Card */
+.login-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(25px);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  width: 360px;
+  text-align: center;
+  animation: fadeIn 1s ease forwards;
+}
+
+/* Title */
+h2 {
+  margin-bottom: 25px;
+  font-weight: 600;
+  font-size: 28px;
+  color: #fff;
+}
+
+/* Input Fields */
+input[type="text"], input[type="password"] {
+  width: 100%;
+  padding: 14px;
+  margin: 12px 0 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  transition: background 0.3s ease;
+}
+
+input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+input:focus {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Gradient Login Button */
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Flash Message */
+.flash-message {
+  background: rgba(255, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+}
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(-20px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+
+  </style>
+</head>
+<body>
+  
+  <div class="login-card">
+    <h2>Welcome Back</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-message">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <form method="POST" action="{{ url_for('login') }}">
+      <input type="text" name="username" placeholder="Username" required autofocus />
+      <input type="password" name="password" placeholder="Password" required />
+      <button type="submit">Log In</button>
+    </form>
+  </div>
+
+</body>
+</html>
