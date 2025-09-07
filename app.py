@@ -19,6 +19,25 @@ import sqlite3
 import pandas as pd
 from io import BytesIO
 
+# ✅ NEW: Google Credentials Loading for Render Deployment
+import json
+from google.oauth2 import service_account
+
+# Load Google Credentials from environment variable (Render-safe)
+google_creds_json = os.getenv("GOOGLE_CREDENTIALS")
+if google_creds_json:
+    try:
+        creds_dict = json.loads(google_creds_json)
+        credentials = service_account.Credentials.from_service_account_info(creds_dict)
+        # ✅ You can now import/use this credentials object in read_sheet() or anywhere needed
+    except Exception as e:
+        print("❌ Failed to load GOOGLE_CREDENTIALS:", e)
+        credentials = None
+else:
+    print("⚠ GOOGLE_CREDENTIALS environment variable not set. Some features may fail.")
+    credentials = None
+
+
 app = Flask(__name__)
 app.secret_key = 'simplekey123'  # Secret key for session
 
@@ -61,7 +80,7 @@ def generate():
             flash("⚠ Please enter both start and end dates!", "error")
             return redirect(url_for('index'))
 
-        df = read_sheet()
+        df = read_sheet()  # ✅ This function should now internally use the `credentials` object above
         if df.empty:
             flash("❌ Failed to load data from Google Sheet.", "error")
             return redirect(url_for('index'))
